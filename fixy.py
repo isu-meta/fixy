@@ -93,7 +93,7 @@ def add_element_genre_aat(mods, cdm):
 
     fix_me = mods.xpath(mods_xpath, namespaces=NS)[0]
     genre = cdm.xpath(cdm_xpath, namespaces=NS)
-    fix_me.append(etree.fromstring(f'<genre authority="aat">{genre}</genre>'))
+    fix_me.append(etree.fromstring(f'<genre authority="aat">{genre}</genre>\n'))
 
     return mods
 
@@ -120,6 +120,26 @@ def add_element_record_created(mods, cdm):
             f'<recordCreationDate encoding="iso8601">{record_created}</recordCreationDate>\n'
         )
     )
+
+    return mods
+
+
+def add_element_local_id_from_ark(mods):
+    global NS
+    xpath = "//mods:mods"
+    ark_xpath = "string(/mods:mods/mods:identifier[@type='ark'])"
+    local_id = mods.xpath(ark_xpath, namespaces=NS)
+    fix_me = mods.xpath(xpath, namespaces=NS)[0]
+    fix_me.append(etree.fromstring(f'<identifier type="local">{local_id}</identifier>\n'))
+
+    return mods
+
+
+def add_element_local_id_noncdm(mods, local_id):
+    global NS
+    xpath = "//mods:mods"
+    fix_me = mods.xpath(xpath, namespaces=NS)[0]
+    fix_me.append(etree.fromstring(f'<identifier type="local">{local_id}</identifier>\n'))
 
     return mods
 
@@ -154,11 +174,29 @@ def update_element_digital_collection_ark(mods, new_ark):
     return mods
 
 
+def update_element_finding_aid_ark(mods, new_ark):
+    global NS
+    xpath = "//mods:relatedItem[@displayLabel='Collection']/mods:identifier[@type='ark']"
+    ark_elem = mods.xpath(xpath, namespaces=NS)[0]
+    ark_elem.text = new_ark
+
+    return mods
+
+
 def update_element_curator_to_curator(mods):
     global NS
     xpath = "//mods:roleTerm[text()='Contributing Institution']"
     curator = mods.xpath(xpath, namespaces=NS)[0]
     curator.text = "curator"
+
+    return mods
+
+
+def update_element_curator_name_to_naf(mods):
+    global NS
+    xpath = "//mods:name/mods:namePart[following-sibling::mods:role/mods:roleTerm/text()='curator' or following-sibling::mods:role/mods:roleTerm/text()='Contributing Institution']"
+    curator = mods.xpath(xpath, namespaces=NS)[0]
+    curator.text = "Iowa State University. Special Collections and University Archives"
 
     return mods
 
@@ -170,6 +208,15 @@ def update_element_genre_imt_to_image_tiff(mods):
     imt_type.text = "image/tiff"
 
     return mods
+
+
+def update_element_local_id_from_filename(mods):
+    global NS
+    filename_xpath = "string(/mods:mods/mods:identifier[not(@*)])"
+    local_id_xpath = "/mods:mods/mods:identifier[@type='local']"
+    filename = mods.xpath(filename_xpath)
+    local_id = mods.xpath(local_id_xpath)
+    local_id.text = filename.split(".")[0]
 
 
 def update_element_topic_split_on_semicolon(mods):
