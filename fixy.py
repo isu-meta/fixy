@@ -1,12 +1,31 @@
+from os import name
 from lxml import etree
 
-NS = {
-    "cdm": "http://www.oclc.org/contentdm",
-    "mods": "http://www.loc.gov/mods/v3"
-}
+NS = {"cdm": "http://www.oclc.org/contentdm", "mods": "http://www.loc.gov/mods/v3"}
 
 
 # Attributes
+
+
+def add_attribute_curator_name_value_uri(mods):
+    global NS
+    xpath = "//mods:name[mods:role/mods:roleTerm/text()='curator' or mods:role/mods:roleTerm/text()='Contributing Institution']"
+    value_uri = "http://id.loc.gov/authorities/names/no2021021777"
+    curator = mods.xpath(xpath, namespaces=NS)[0]
+    curator.attrib["valueURI"] = value_uri
+
+    return mods
+
+
+def add_attribute_finding_aid_identifier_type(mods):  # NOT WORKING?
+    global NS
+    xpath = "//mods:relatedItem[@displayLabel='Collection']/mods:identifier[not(@*)]"
+    identifier = mods.xpath(xpath, namespaces=NS)[0]
+
+    identifier.attrib["type"] = "ark"
+
+    return mods
+
 
 def add_update_attribute_roleTerm_type_text(mods):
     global NS
@@ -15,7 +34,7 @@ def add_update_attribute_roleTerm_type_text(mods):
 
     for r in roleTerms:
         r.attrib["type"] = "text"
-    
+
     return mods
 
 
@@ -36,13 +55,27 @@ def update_attribute_collection_relatedItem_type_to_original(mods):
 
     return mods
 
+
 def update_attribute_language_type_to_code(mods):
     global NS
     xpath = "//mods:language/mods:languageTerm"
     language_term = mods.xpath(xpath, namespaces=NS)[0]
     language_term.attrib["type"] = "code"
 
+
 # Elements
+
+
+def add_element_box(mods, cdm):
+    global NS
+    mods_xpath = "//mods:titleInfo[@displayLabel='Box']"
+    cdm_xpath = "string(//cdm:box/text())"
+
+    fix_me = mods.xpath(mods_xpath, namespaces=NS)[0]
+    box_number = cdm.xpath(cdm_xpath, namespaces=NS)
+    fix_me.append(etree.fromstring(f"<title>{box_number}</title>\n"))
+
+    return mods
 
 
 def add_element_date_digital(mods, cdm):
@@ -64,7 +97,7 @@ def add_element_date_digital(mods, cdm):
 def add_element_folder(mods, cdm):
     global NS
     mods_xpath = "//mods:titleInfo[@displayLabel='Folder']"
-    cdm_xpath = "string(//cdm:Folder/text())"
+    cdm_xpath = "string(//cdm:folder/text())"
 
     fix_me = mods.xpath(mods_xpath, namespaces=NS)[0]
     folder_number = cdm.xpath(cdm_xpath, namespaces=NS)
@@ -85,7 +118,6 @@ def add_element_folder_title(mods, cdm):
     return mods
 
 
-
 def add_element_genre_aat(mods, cdm):
     global NS
     mods_xpath = "//mods:mods"
@@ -104,8 +136,10 @@ def add_element_note_hardware_software(mods, cdm):
     cdm_xpath = "string(//cdm:hardware-software/text())"
     fix_me = mods.xpath(mods_xpath, namespaces=NS)[0]
     hardware_software = cdm.xpath(cdm_xpath, namespaces=NS)
-    fix_me.append(etree.fromstring(f'<note type="hardware/software">{hardware_software}</note>\n'))
-    
+    fix_me.append(
+        etree.fromstring(f'<note type="hardware/software">{hardware_software}</note>\n')
+    )
+
     return mods
 
 
@@ -124,13 +158,31 @@ def add_element_record_created(mods, cdm):
     return mods
 
 
+def add_element_record_modified(mods, cdm):
+    global NS
+    mods_xpath = "//mods:recordInfo"
+    cdm_xpath = "string(//cdm:date-modified/text())"
+    fix_me = mods.xpath(mods_xpath, namespaces=NS)[0]
+    record_created = cdm.xpath(cdm_xpath, namespaces=NS)
+    fix_me.append(
+        etree.fromstring(
+            f'<recordChangeDate encoding="iso8601">{record_created}</recordChangeDate>\n'
+        )
+    )
+
+    return mods
+
+
 def add_element_local_id_from_ark(mods):
     global NS
+
     xpath = "//mods:mods"
     ark_xpath = "string(/mods:mods/mods:identifier[@type='ark'])"
     local_id = mods.xpath(ark_xpath, namespaces=NS)
     fix_me = mods.xpath(xpath, namespaces=NS)[0]
-    fix_me.append(etree.fromstring(f'<identifier type="local">{local_id}</identifier>\n'))
+    fix_me.append(
+        etree.fromstring(f'<identifier type="local">{local_id}</identifier>\n')
+    )
 
     return mods
 
@@ -139,7 +191,9 @@ def add_element_local_id_noncdm(mods, local_id):
     global NS
     xpath = "//mods:mods"
     fix_me = mods.xpath(xpath, namespaces=NS)[0]
-    fix_me.append(etree.fromstring(f'<identifier type="local">{local_id}</identifier>\n'))
+    fix_me.append(
+        etree.fromstring(f'<identifier type="local">{local_id}</identifier>\n')
+    )
 
     return mods
 
@@ -148,7 +202,7 @@ def remove_element_identifier_if_empty(mods):
     global NS
     xpath = "//mods:identifier[not(@*) and not(text())]"
     empty_identifiers = mods.xpath(xpath, namespaces=NS)
-    
+
     if len(empty_identifiers) > 0:
         for i in empty_identifiers:
             i.getparent().remove(i)
@@ -176,7 +230,9 @@ def update_element_digital_collection_ark(mods, new_ark):
 
 def update_element_finding_aid_ark(mods, new_ark):
     global NS
-    xpath = "//mods:relatedItem[@displayLabel='Collection']/mods:identifier[@type='ark']"
+    xpath = (
+        "//mods:relatedItem[@displayLabel='Collection']/mods:identifier[@type='ark']"
+    )
     ark_elem = mods.xpath(xpath, namespaces=NS)[0]
     ark_elem.text = new_ark
 
@@ -192,7 +248,7 @@ def update_element_curator_to_curator(mods):
     return mods
 
 
-def update_element_curator_name_to_naf(mods):
+def update_element_curator_name_to_naf(mods):  # NOT WORKING?
     global NS
     xpath = "//mods:name/mods:namePart[following-sibling::mods:role/mods:roleTerm/text()='curator' or following-sibling::mods:role/mods:roleTerm/text()='Contributing Institution']"
     curator = mods.xpath(xpath, namespaces=NS)[0]
@@ -217,6 +273,18 @@ def update_element_local_id_from_filename(mods):
     filename = mods.xpath(filename_xpath)
     local_id = mods.xpath(local_id_xpath)
     local_id.text = filename.split(".")[0]
+
+
+def update_element_physical_collection_remove_url(mods):
+    global NS
+    xpath = "//mods:relatedItem[@displayLabel='Collection']/mods:titleInfo/mods:title"
+    collection_name = mods.xpath(xpath, namespaces=NS)[0]
+    try:
+        collection_name.text = collection_name.text.split(",")[0].strip()
+    except AttributeError:
+        collection_name.text = ""
+
+    return mods
 
 
 def update_element_topic_split_on_semicolon(mods):
@@ -274,6 +342,7 @@ def update_element_geographic_split_on_semicolon(mods):
 
     return mods
 
+
 def update_element_temporal_split_on_semicolon(mods):
     global NS
     xpath = "//mods:subject[mods:temporal]"
@@ -291,14 +360,19 @@ def update_element_temporal_split_on_semicolon(mods):
 
 # Multi
 
+
 def universal_changes(mods):
     add_update_attribute_roleTerm_type_text(mods)
     update_attribute_language_type_to_code(mods)
     update_attribute_collection_relatedItem_type_to_original(mods)
+    update_element_curator_name_to_naf(mods)
+    add_attribute_curator_name_value_uri(mods)
+    update_element_physical_collection_remove_url(mods)
     remove_element_identifier_if_empty(mods)
 
 
 # File handling
+
 
 def load_cdm(pid):
     try:
@@ -324,7 +398,7 @@ def save_mods(mods, pid):
     out_xml = etree.tostring(
         mods, xml_declaration=True, encoding="UTF-8", pretty_print=True
     ).decode("utf-8")
-    
+
     with open(f"{pid}.xml", "w", encoding="utf8") as fh:
         fh.write(out_xml)
 
@@ -333,6 +407,6 @@ def save_dc(dc, pid):
     out_xml = etree.tostring(
         dc, xml_declaration=True, encoding="UTF-8", pretty_print=True
     ).decode("utf-8")
-    
+
     with open(f"dc-{pid}.xml", "w", encoding="utf8") as fh:
         fh.write(out_xml)
